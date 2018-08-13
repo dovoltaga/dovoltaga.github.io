@@ -1,0 +1,214 @@
+<html lang='ja'>
+<head>
+<title>TxtHub</title>
+<meta charset='UTF-8' />
+
+
+<script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+<!--
+<script src='marked.min.js'></script>
+-->
+
+<style>
+body {
+  font-size:medium;
+  font-family:sans-serif;
+  color;black;
+  background:white;
+  margin:0;
+}
+
+#memo_area {
+  font-size:16px;
+  font-family:sans-serif;
+  background:none;
+  width:100%;
+  height:94%;
+  padding:5px;
+  border:solid 1px whitesmoke;
+  white-space:pre-wrap;
+  position:absolute;
+  bottom:0px;
+}
+
+#html_area {
+  font-size:16px;
+  font-family:sans-serif;
+  background:whitesmoke;
+  width:100%;
+  height:94%;
+  padding:5px;
+  border:solid 1px whitesmoke;
+  white-space:pre-wrap;
+  position:absolute;
+  bottom:0px;
+}
+
+#preview_area {
+  font-family:sans-serif;
+  background:none;
+}
+
+#button_area {
+  text-align:center;
+  height:6%;
+}
+
+#viewbtn {
+  font-size:medium;
+  width:15%;
+  height:90%;
+  margin-top:1pt;
+  margin-buttom:1px;
+  background-color:whitesmoke;
+  border:solid 0px;
+}
+
+</style>
+
+</head>
+<body>
+<div id='button_area'>
+<input id='viewbtn' type='button' value='PreView' onclick='preView_Clicked();' />
+<input id='viewbtn' type='button' value='Convert' onclick='convert_Clicked();' />
+<input id='viewbtn' type='button' value='Copy' onclick='copy_Clicked();' />
+<input id='viewbtn' type='button' value='Clear' onclick='clear_Clicked();' />
+<input id='viewbtn' type='button' value='kaereba' onclick='kaereba_Clicked();' />
+<input id='viewbtn' type='button' value='yomereba' onclick='yomereba_Clicked();' />
+</div>
+
+<textarea id='memo_area' onblur='memoStore();' ></textarea>
+<div id='preview_area' style='display:hidden;'></div>
+<textarea id='html_area' style='display:none;' onclick='this.select();' readonly></textarea>
+
+<script language='JavaScript'>
+
+var memoArea = document.getElementById('memo_area');
+var previewArea = document.getElementById('preview_area');
+var htmlArea = document.getElementById('html_area');
+
+var sStored = '';
+ if(localStorage.getItem('texthub_text').length>0){ 
+  sStored = sStored + localStorage.getItem('txthub_text');
+}
+var sSrch = location.search;
+
+if(sSrch){
+  sStored = decodeURIComponent(sSrch.substr(1));
+  localStorage.setItem('txthub_text', sStored);
+}
+memoArea.value = sStored;
+
+function memoStore ( ) {
+  localStorage.setItem('txthub_text', memoArea.value);
+}
+
+function converter (  ) {
+  if(memoArea.value.length<1){ return ''; }
+
+  marked.setOptions({breaks:true, headerIds:false, langPrefix:""});
+  var chgTxt = '';
+  var line = marked(memoArea.value).split('\n');
+  if((/^\<h1\>.+\<\/h1\>$/).test(line[0])==false){
+    line[0] = '<h1>'+line[0].replace(/^<p>/,'').replace(/<\/p>$/,'')+'</h1>';
+  }
+  for(var ii=0;ii<line.length;ii++){
+    if((/^\<p\>\<a/).test(line[ii])){
+      line[ii] = line[ii].replace(/^<p>/,'').replace(/<\/p>$/,'')
+    }
+    if((/\<\/[pa]\>$/).test(line[ii]) || (/\<\/h[1-6]\>$/).test(line[ii]) ){
+      line[ii] = line[ii] + '\n';
+    }
+    line[ii] = line[ii].replace(/<br>/g,'<br>\n')
+  }
+  chgTxt = line.join('\n');
+  return chgTxt;
+}
+
+// Previewモード時はtrue
+var bView = false;
+
+function preView_Clicked ( ) {
+  memoStore();
+  if(!bView){
+    memoArea.style.display = 'none';
+    previewArea.style.display = 'block';
+    htmlArea.style.display = 'none';
+    previewArea.innerHTML = converter();
+    bView = true;
+    bHtml = false;
+  }else{
+    memoArea.style.display = 'block';
+    previewArea.style.display = 'none';
+    htmlArea.style.display = 'none';
+    bView = false;
+    bHtml = false;
+  }
+}
+
+var bHtml = false;
+
+function convert_Clicked ( ) {
+  memoStore();
+  var chgTxt = converter();
+  if(!bHtml){
+    memoArea.style.display = 'none';
+    previewArea.style.display = 'none';
+    htmlArea.style.display = 'block';
+    htmlArea.value = chgTxt;
+    bHtml = true;
+    bView = false;
+  }else{
+    memoArea.style.display = 'block';
+    previewArea.style.display = 'none';
+    htmlArea.style.display = 'none';
+    bHtml = false;
+    bView = false;
+  }
+}
+
+function copy_Clicked ( ) {
+  if(!bView){
+    memoStore();
+    if(bHtml){
+      htmlArea.select();
+    }else{
+      memoArea.select();
+    }
+    document.execCommand('copy');
+    alert('クリップボードにコピーしました。');
+  }
+}
+
+function clear_Clicked ( ) {
+  if(!bView){
+    memoArea.value = '';
+    htmlArea.value = '';
+    localStorage.removeItem('txthub_text');
+  }
+}
+
+function getTextareaLineStr ( ) {
+  var pos = memoArea.selectionStart;
+  var subTxt = (memoArea.value).substr(0,pos) ;
+  var posTxt = subTxt.split('\n');
+  var lines = (memoArea.value).split('\n');
+  return (lines[posTxt.length-1]);
+}
+
+function kaereba_Clicked ( ) {
+  var line = getTextareaLineStr();
+  var url = "https://kaereba.com/search/q_" + line + "/s_amazon/";
+  window.open(url);
+}
+
+function yomereba_Clicked ( ) {
+  var line = getTextareaLineStr();
+  var url = "https://yomereba.com/search/q_" + line + "/s_amazon/";
+  window.open(url);
+}
+
+</script>
+
+</body>
+</html>
